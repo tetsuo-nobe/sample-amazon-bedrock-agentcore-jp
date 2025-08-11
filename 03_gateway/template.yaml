@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  AgentCore Gateway Lambda function that calls AgentCore Runtime
+
+Parameters:
+  AgentCoreRuntimeArn:
+    Type: String
+    Description: The ARN of the AgentCore Runtime deployed in 02_runtime
+    Default: ""
+
+Globals:
+  Function:
+    Timeout: 300
+    MemorySize: 512
+    Runtime: python3.12
+
+Resources:
+  AgentCoreGatewayFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: app.lambda_handler
+      Description: Lambda function that integrates with AgentCore Runtime
+      ReservedConcurrentExecutions: 5  # Limit concurrent executions for cost control
+      Environment:
+        Variables:
+          AGENTCORE_RUNTIME_ARN: !Ref AgentCoreRuntimeArn
+          LOG_LEVEL: INFO
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            # Permission to invoke any AgentCore Runtime in this region and account
+            - Effect: Allow
+              Action:
+                - bedrock-agentcore:InvokeAgentRuntime
+              Resource: !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:runtime/*'
+            # Permission to invoke Bedrock models (if needed by the runtime)
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: 
+                - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/*'
+                - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:*'
+
+Outputs:
+  AgentCoreGatewayFunctionArn:
+    Description: ARN of the Lambda function for AgentCore Gateway
+    Value: !GetAtt AgentCoreGatewayFunction.Arn
+  AgentCoreGatewayFunctionName:
+    Description: Name of the Lambda function
+    Value: !Ref AgentCoreGatewayFunction
