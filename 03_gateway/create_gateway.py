@@ -1,13 +1,13 @@
 """
-Create AgentCore Gateway with Lambda target using AgentCore SDK
+AgentCore SDKを使用してLambdaターゲットを持つAgentCore Gatewayを作成
 
-This script automatically retrieves the Lambda ARN from configuration or CloudFormation,
-handles OIDC DNS propagation delays, and provides robust resource cleanup.
+このスクリプトは設定またはCloudFormationからLambda ARNを自動取得し、
+OIDC DNS伝播遅延を処理し、堅牢なリソースクリーンアップを提供します。
 
-Usage:
-  uv run python create_gateway.py                    # Auto-detect Lambda ARN
-  uv run python create_gateway.py --lambda-arn ARN   # Specify Lambda ARN explicitly
-  uv run python create_gateway.py --force            # Force recreation of resources
+使用方法:
+  uv run python create_gateway.py                    # Lambda ARNを自動検出
+  uv run python create_gateway.py --lambda-arn ARN   # Lambda ARNを明示的に指定
+  uv run python create_gateway.py --force            # リソースの強制再作成
 """
 
 import json
@@ -19,7 +19,7 @@ import requests
 from pathlib import Path
 from bedrock_agentcore_starter_toolkit.operations.gateway.client import GatewayClient
 
-# Configure logging
+# ログ設定
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ CONFIG_FILE = Path('gateway_config.json')
 
 
 def main():
-    """Main function to create Gateway with Lambda target"""
+    """Lambdaターゲットを持つGatewayを作成するメイン関数"""
     parser = argparse.ArgumentParser(description='Create AgentCore Gateway with Lambda target')
     parser.add_argument('--lambda-arn', help='Lambda function ARN (auto-detected if not provided)')
     parser.add_argument('--force', action='store_true', help='Force recreation of resources')
@@ -36,28 +36,28 @@ def main():
     try:
         logger.info("Starting AgentCore Gateway setup...")
         
-        # Get Lambda ARN
+        # Lambda ARNを取得
         lambda_arn = args.lambda_arn or load_lambda_arn()
         logger.info(f"Using Lambda ARN: {lambda_arn}")
 
-        # Initialize Gateway client
+        # Gatewayクライアントを初期化
         client = GatewayClient(region_name=boto3.Session().region_name)
         
-        # Handle existing configuration
+        # 既存の設定を処理
         existing_config = load_config() if CONFIG_FILE.exists() else None
         
-        # Determine what needs to be created based on existing config
+        # 既存の設定に基づいて作成が必要なものを判定
         has_cognito = existing_config and 'cognito' in existing_config
         has_gateway = existing_config and 'gateway_id' in existing_config
         has_target = existing_config and 'target_id' in existing_config
         
-        # If everything is complete and not forcing, show summary and exit
+        # すべて完了しており強制フラグがない場合、サマリーを表示して終了
         if existing_config and has_cognito and has_gateway and has_target and not args.force:
             logger.info("All components already configured (use --force to recreate)")
             print_config_summary(existing_config)
             return
         
-        # Show what we're going to do
+        # 実行予定の内容を表示
         if existing_config and not args.force:
             logger.info("Found partial configuration, completing setup...")
             if has_cognito:
@@ -74,15 +74,15 @@ def main():
                 cleanup_resources(client, existing_config)
             has_cognito = has_gateway = has_target = False
         
-        # Step 1: Handle Cognito OAuth authorizer
+        # ステップ1: Cognito OAuth認証の処理
         if has_cognito:
             logger.info("✅ Reusing existing Cognito configuration")
             cognito_config = existing_config['cognito']
-            # Reconstruct cognito_result for compatibility with later code
+            # 後続のコードとの互換性のためにcognito_resultを再構築
             cognito_result = {
                 'client_info': cognito_config,
                 'authorizer_config': {
-                    # We'll need this for gateway creation if gateway doesn't exist
+                    # ゲートウェイが存在しない場合のゲートウェイ作成に必要
                     'type': 'JWT',
                     'userPoolId': cognito_config['user_pool_id']
                 }
@@ -103,12 +103,12 @@ def main():
             save_config(cognito_config)
             logger.info("✅ Cognito configuration saved")
 
-        # Step 2: Handle Gateway creation
+        # ステップ2: Gateway作成の処理
         if has_gateway:
             logger.info("✅ Reusing existing Gateway")
             gateway_id = existing_config['gateway_id']
             gateway_url = existing_config['gateway_url']
-            # Create gateway object for target creation
+            # ターゲット作成用のgatewayオブジェクトを作成
             gateway = {"gatewayId": gateway_id, "gatewayUrl": gateway_url}
         else:
             logger.info("Creating MCP Gateway...")
@@ -123,21 +123,21 @@ def main():
             gateway_url = gateway["gatewayUrl"]
             logger.info(f"Gateway created: {gateway_id}")
             
-            # Save gateway configuration immediately after creation
+            # 作成直後にgateway設定を保存
             save_config({
                 "gateway_id": gateway_id,
                 "gateway_url": gateway_url
             })
             logger.info("✅ Gateway configuration saved")
         
-        # Wait for OIDC endpoint availability
+        # OIDCエンドポイントの利用可能性を待機
         logger.info("Waiting for OIDC endpoint to become available...")
         oidc_url = get_oidc_discovery_url(cognito_result)
         
         if not wait_for_oidc_endpoint(oidc_url):
             logger.warning("OIDC endpoint may not be ready, but proceeding...")
         
-        # Step 3: Handle Lambda target creation
+        # ステップ3: Lambdaターゲット作成の処理
         if has_target:
             logger.info("✅ Reusing existing Lambda target")
             target_id = existing_config['target_id']
@@ -160,9 +160,9 @@ def main():
                 }
             ]
 
-            # Create lambda target with required credentialProviderConfigurations
-            # Note: toolkit's create_mcp_gateway_target doesn't handle custom target_payload + credentials
-            # Reference: https://github.com/aws/bedrock-agentcore-starter-toolkit/pull/57 
+            # 必要なcredentialProviderConfigurationsでlambdaターゲットを作成
+            # 注意: toolkitのcreate_mcp_gateway_targetはカスタムtarget_payload + credentialsを処理しない
+            # 参考: https://github.com/aws/bedrock-agentcore-starter-toolkit/pull/57 
             target_name = "AWSCostEstimationLambdaTarget"
             
             create_request = {
@@ -184,16 +184,16 @@ def main():
             logger.info("Creating Lambda target with custom schema and credentials...")
             logger.info(f"Request: {create_request}")
             
-            # Use boto3 client directly since toolkit method doesn't support this combination
+            # toolkitメソッドがこの組み合わせをサポートしないため、boto3クライアントを直接使用
             bedrock_client = client.session.client('bedrock-agentcore-control')
             target_response = bedrock_client.create_gateway_target(**create_request)
             
             target_id = target_response["targetId"]
             logger.info(f"✓ Lambda target created: {target_id}")
             
-            # Wait for target to be ready with 5-minute timeout
-            max_wait = 300  # 5 minutes
-            interval = 5    # 5 seconds
+            # 5分のタイムアウトでターゲットの準備完了を待機
+            max_wait = 300  # 5分
+            interval = 5    # 5秒
             start_time = time.time()
             attempt = 1
             
@@ -226,7 +226,7 @@ def main():
             
             logger.info(f"Lambda target created: {target_id}")
             
-            # Save target configuration immediately
+            # ターゲット設定を即座に保存
             save_config({
                 "target_id": target_id
             })
@@ -237,12 +237,12 @@ def main():
         
     except Exception as e:
         logger.error(f"Gateway setup failed: {e}")
-        return  # Handle error without re-raising
+        return  # 再発生せずにエラーを処理
 
 
 def load_lambda_arn():
-    """Load Lambda ARN from config file or CloudFormation stack"""
-    # Try config file first
+    """設定ファイルまたはCloudFormationスタックからLambda ARNを読み込み"""
+    # まず設定ファイルを試行
     if CONFIG_FILE.exists():
         try:
             config = load_config()
@@ -251,7 +251,7 @@ def load_lambda_arn():
         except Exception as e:
             logger.debug(f"Config file read failed: {e}")
     
-    # Fallback to CloudFormation
+    # CloudFormationにフォールバック
     logger.info("Checking CloudFormation for Lambda ARN...")
     try:
         cf_client = boto3.client('cloudformation')
@@ -264,7 +264,7 @@ def load_lambda_arn():
             if output['OutputKey'] == 'AgentCoreGatewayFunctionArn':
                 lambda_arn = output['OutputValue']
                 
-                # Save to config for future use
+                # 将来の使用のために設定に保存
                 save_config({
                     "lambda_arn": lambda_arn,
                     "stack_name": stack_name,
@@ -283,10 +283,10 @@ def load_lambda_arn():
 
 
 def wait_for_oidc_endpoint(oidc_url, max_wait=600, interval=30):
-    """Wait for OIDC discovery endpoint to become available
+    """OIDCディスカバリーエンドポイントが利用可能になるまで待機
     
-    Based on real-world testing, OIDC endpoints can take 5+ minutes to become available
-    due to DNS propagation and service initialization delays.
+    実際のテストに基づくと、DNS伝播とサービス初期化の遅延により、
+    OIDCエンドポイントが利用可能になるまでに5分以上かかる場合があります。
     """
     start_time = time.time()
     attempt = 1
@@ -299,13 +299,13 @@ def wait_for_oidc_endpoint(oidc_url, max_wait=600, interval=30):
             response = requests.get(oidc_url, timeout=10)
             logger.info(f"⏳ Attempt {attempt}: HTTP {response.status_code}")
             
-            # Raise exception for HTTP error status codes (4xx, 5xx)
+            # HTTPエラーステータスコード（4xx、5xx）に対して例外を発生
             response.raise_for_status()
             
             if response.status_code == 200:
                 elapsed = time.time() - start_time
                 logger.info(f"✅ OIDC endpoint available after {elapsed:.1f}s")
-                # Verify it's actually valid JSON
+                # 実際に有効なJSONかどうかを確認
                 try:
                     json_data = response.json()
                     if 'issuer' in json_data:
@@ -344,32 +344,32 @@ def wait_for_oidc_endpoint(oidc_url, max_wait=600, interval=30):
 
 
 def get_oidc_discovery_url(cognito_result):
-    """Extract OIDC discovery URL from Cognito configuration"""
+    """Cognito設定からOIDCディスカバリーURLを抽出"""
     user_pool_id = cognito_result['client_info']['user_pool_id']
     region = boto3.Session().region_name
     return f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}/.well-known/openid-configuration"
 
 
 def cleanup_resources(client, config):
-    """Clean up existing Gateway resources"""
+    """既存のGatewayリソースをクリーンアップ"""
     try:
-        # Delete target first
+        # まずターゲットを削除
         if 'target_id' in config and 'gateway_id' in config:
             client.delete_mcp_gateway_target(config['gateway_id'], config['target_id'])
             logger.info("Deleted Gateway target")
         
-        # Delete Gateway
+        # Gatewayを削除
         if 'gateway_id' in config:
             client.delete_mcp_gateway(config['gateway_id'])
             logger.info("Deleted Gateway")
         
-        # Clean up Cognito resources
+        # Cognitoリソースをクリーンアップ
         cleanup_cognito_resources(config.get('cognito', {}))
         
     except Exception as e:
         logger.warning(f"Cleanup error: {e}")
     
-    # Remove old config
+    # 古い設定を削除
     try:
         CONFIG_FILE.unlink()
     except OSError:
@@ -377,7 +377,7 @@ def cleanup_resources(client, config):
 
 
 def cleanup_cognito_resources(cognito_config):
-    """Clean up Cognito resources explicitly"""
+    """Cognitoリソースを明示的にクリーンアップ"""
     if not cognito_config.get('user_pool_id'):
         return
     
@@ -385,20 +385,20 @@ def cleanup_cognito_resources(cognito_config):
         cognito_client = boto3.client('cognito-idp')
         user_pool_id = cognito_config['user_pool_id']
         
-        # Delete app client
+        # アプリクライアントを削除
         if cognito_config.get('client_id'):
             cognito_client.delete_user_pool_client(
                 UserPoolId=user_pool_id,
                 ClientId=cognito_config['client_id']
             )
         
-        # Delete resource server
+        # リソースサーバーを削除
         cognito_client.delete_resource_server(
             UserPoolId=user_pool_id,
             Identifier='AWSCostEstimationResourceServer'
         )
         
-        # Delete user pool
+        # ユーザープールを削除
         cognito_client.delete_user_pool(UserPoolId=user_pool_id)
         logger.info("Cleaned up Cognito resources")
         
@@ -407,13 +407,13 @@ def cleanup_cognito_resources(cognito_config):
 
 
 def load_config():
-    """Load configuration from file"""
+    """ファイルから設定を読み込み"""
     with CONFIG_FILE.open('r') as f:
         return json.load(f)
 
 
 def save_config(updates):
-    """Update configuration file with new data"""
+    """新しいデータで設定ファイルを更新"""
     config = {}
     if CONFIG_FILE.exists():
         try:
@@ -428,7 +428,7 @@ def save_config(updates):
 
 
 def print_config_summary(config):
-    """Print a clean summary of the configuration"""
+    """設定のクリーンなサマリーを印刷"""
     print("\n" + "="*50)
     print("Gateway Configuration Summary")
     print("="*50)

@@ -1,24 +1,24 @@
 """
-Strands agent that uses AgentCore Identity with existing Cognito M2M OAuth.
+既存のCognito M2M OAuthでAgentCore Identityを使用するStrandsエージェント。
 
-This implementation demonstrates the integration of AgentCore Identity with
-a Strands agent that calls the existing Gateway. The @requires_access_token
-decorator handles OAuth M2M authentication transparently.
+この実装は、既存のGatewayを呼び出すStrandsエージェントと
+AgentCore Identityの統合を示します。@requires_access_token
+デコレーターOAuth M2M認証を透明に処理します。
 
-Key Features:
-- Uses @requires_access_token for automatic token management
-- Integrates with existing Gateway infrastructure
-- Provides secure, authenticated access to MCP tools
-- Follows two-step pattern: Get token → Create agent → Use tools
+主要機能:
+- 自動トークン管理のための@requires_access_tokenを使用
+- 既存のGatewayインフラとの統合
+- MCPツールへのセキュアで認証されたアクセスを提供
+- 2ステップパターンに従う: トークン取得 → エージェント作成 → ツール使用
 
-Prerequisites:
-- Gateway deployed (03_gateway)
-- OAuth2 credential provider created (setup_credential_provider.py)
+前提条件:
+- Gatewayがデプロイ済み (03_gateway)
+- OAuth2認証プロバイダーが作成済み (setup_credential_provider.py)
 
-Usage:
+使用方法:
     from agent_with_identity import AgentWithIdentity
     agent = AgentWithIdentity()
-    result = await agent.estimate_costs("architecture description")
+    result = await agent.estimate_costs("アーキテクチャ説明")
 """
 
 import asyncio
@@ -32,7 +32,7 @@ import logging
 from pathlib import Path
 from setup_credential_provider import PROVIDER_NAME
 
-# Configure logging for debugging and monitoring
+# デバッグと監視のためのログ設定
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -41,18 +41,18 @@ logger = logging.getLogger(__name__)
 
 class AgentWithIdentity:
     """
-    Agent that uses AgentCore Identity with existing Cognito M2M authentication.
+    既存のCognito M2M認証でAgentCore Identityを使用するエージェント。
     
-    This class demonstrates how to:
-    1. Load existing Gateway configuration
-    2. Use @requires_access_token for authentication
-    3. Create authenticated MCP clients
-    4. Perform secure API calls through the Gateway
+    このクラスは以下の方法を示します:
+    1. 既存のGateway設定を読み込み
+    2. 認証のための@requires_access_tokenを使用
+    3. 認証されたMCPクライアントを作成
+    4. Gatewayを通じてセキュアなAPI呼び出しを実行
     """
     
     def __init__(self):
-        """Initialize agent with existing gateway configuration"""
-        # Load existing gateway configuration
+        """既存のgateway設定でエージェントを初期化"""
+        # 既存のgateway設定を読み込み
         config_path = Path("../03_gateway/gateway_config.json")
         if not config_path.exists():
             raise FileNotFoundError(
@@ -67,7 +67,7 @@ class AgentWithIdentity:
         except Exception as e:
             raise RuntimeError(f"Failed to load gateway configuration: {e}")
         
-        # Extract configuration values
+        # 設定値を抽出
         self.gateway_url = self.gateway_config['gateway_url']
         self.cognito_config = self.gateway_config['cognito']
         self.region = self.gateway_config['region']
@@ -77,77 +77,77 @@ class AgentWithIdentity:
     
     async def get_access_token(self) -> str:
         """
-        Get access token using AgentCore Identity.
+        AgentCore Identityを使用してアクセストークンを取得。
         
-        This method uses the @requires_access_token decorator to handle
-        OAuth M2M authentication transparently. The decorator:
-        1. Checks for cached tokens
-        2. Performs OAuth client credentials flow if needed
-        3. Manages token lifecycle automatically
-        4. Provides the token securely to the decorated function
+        このメソッドは@requires_access_tokenデコレーターを使用して
+        OAuth M2M認証を透明に処理します。デコレーターは:
+        1. キャッシュされたトークンをチェック
+        2. 必要に応じてOAuthクライアント認証フローを実行
+        3. トークンのライフサイクルを自動管理
+        4. デコレートされた関数にセキュアにトークンを提供
         
         Returns:
-            str: Access token for authenticated API calls
+            str: 認証されたAPI呼び出し用のアクセストークン
         """
         
-        # Create wrapper function with @requires_access_token decorator
+        # @requires_access_tokenデコレーターでラッパー関数を作成
         # https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/identity-getting-started-step3.html
         # https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/common-use-cases.html
         @requires_access_token(
             provider_name=PROVIDER_NAME,
             scopes=[self.cognito_config['scope']],
-            auth_flow="M2M",  # Machine-to-Machine authentication
-            force_authentication=False  # Use cached tokens when available
+            auth_flow="M2M",  # Machine-to-Machine認証
+            force_authentication=False  # 利用可能な場合はキャッシュされたトークンを使用
         )    
         async def _get_token(*, access_token: str) -> str:
             """
-            Inner function that receives the access token from AgentCore Identity.
+            AgentCore Identityからアクセストークンを受け取る内部関数。
             
-            The @requires_access_token decorator injects the access_token parameter
-            automatically after handling the OAuth flow.
+            @requires_access_tokenデコレーターはOAuthフローを処理した後、
+            access_tokenパラメーターを自動的に注入します。
             
             Args:
-                access_token: OAuth access token (injected by decorator)
+                access_token: OAuthアクセストークン（デコレーターによる注入）
                 
             Returns:
-                str: The access token for use in API calls
+                str: API呼び出しで使用するアクセストークン
             """
             logger.info("✅ Successfully obtained access token via AgentCore Identity")
             logger.info(f"   Token prefix: {access_token[:20]}...")
             logger.info(f"   Token length: {len(access_token)} characters")
             return access_token
         
-        # Call the decorated function to get the token
+        # デコレートされた関数を呼び出してトークンを取得
         return await _get_token()
     
     async def estimate_costs(self, architecture_description: str) -> Optional[str]:
         """
-        Complete flow: Get token → Create agent → Estimate costs.
+        完全なフロー: トークン取得 → エージェント作成 → コスト見積もり。
         
-        This demonstrates the recommended two-step pattern for AgentCore Identity:
-        1. Obtain access token using @requires_access_token
-        2. Use token to create authenticated clients and perform operations
+        これはAgentCore Identityの推奨さ2ステップパターンを示します:
+        1. @requires_access_tokenを使用してアクセストークンを取得
+        2. トークンを使用して認証されたクライアントを作成し、操作を実行
         
         Args:
-            architecture_description: Description of AWS architecture to estimate
+            architecture_description: 見積もり対象のAWSアーキテクチャの説明
             
         Returns:
-            str: Cost estimation results from the agent
+            str: エージェントからのコスト見積もり結果
         """
         
-        # Step 1: Get access token using AgentCore Identity
+        # ステップ1: AgentCore Identityを使用してアクセストークンを取得
         logger.info("Step 1: Obtaining access token via AgentCore Identity...")
         access_token = await self.get_access_token()
         
-        # Step 2: Create agent with authenticated MCP client
+        # ステップ2: 認証されたMCPクライアントでエージェントを作成
         logger.info("Step 2: Creating agent with authenticated MCP client...")
         
         def create_streamable_http_transport():
             """
-            Create streamable HTTP transport with Bearer token authentication.
+            Bearerトークン認証でストリーム可能HTTPトランスポートを作成。
             
-            This transport will be used by the MCP client to make authenticated
-            requests to the Gateway.
+            このトランスポートはMCPクライアントが認証された
+            Gatewayへのリクエストを行うために使用されます。
             """
             return streamablehttp_client(
                 self.gateway_url, 
@@ -156,16 +156,16 @@ class AgentWithIdentity:
         
         def get_full_tools_list(client):
             """
-            List all available tools with support for pagination.
+            ページネーションサポートで利用可能な全ツールを一覧表示。
             
-            The Gateway may return tools in paginated responses, so we need
-            to handle pagination to get the complete list.
+            Gatewayはページネーションされたレスポンスでツールを返す可能性があるため、
+            完全なリストを取得するためにページネーションを処理する必要があります。
             
             Args:
-                client: MCP client instance
+                client: MCPクライアントインスタンス
                 
             Returns:
-                list: Complete list of available tools
+                list: 利用可能なツールの完全なリスト
             """
             more_tools = True
             tools = []
@@ -183,13 +183,13 @@ class AgentWithIdentity:
                     
             return tools
 
-        # Create MCP client using the authenticated transport
+        # 認証されたトランスポートを使用してMCPクライアントを作成
         mcp_client = MCPClient(create_streamable_http_transport)
 
         result = None
         try:
             with mcp_client:
-                # Step 3: List available tools through authenticated connection
+                # ステップ3: 認証された接続で利用可能なツールを一覧表示
                 logger.info("Step 3: Listing tools via authenticated MCP client...")
                 tools = get_full_tools_list(mcp_client)
                 tool_names = [tool.tool_name for tool in tools]
@@ -198,7 +198,7 @@ class AgentWithIdentity:
                 if not tools:
                     raise RuntimeError("No tools available from Gateway")
                 
-                # Step 4: Create agent with the authenticated tools
+                # ステップ4: 認証されたツールでエージェントを作成
                 logger.info("Step 4: Creating Strands agent with authenticated tools...")
                 agent = Agent(
                     tools=tools,
@@ -207,7 +207,7 @@ class AgentWithIdentity:
                     """
                 )
                 
-                # Step 5: Use the agent to estimate costs
+                # ステップ5: エージェントを使用してコストを見積もり
                 logger.info("Step 5: Running cost estimation with authenticated agent...")
                 prompt = (
                     f"Please use the aws_cost_estimation tool to estimate costs for this architecture: "
@@ -219,6 +219,6 @@ class AgentWithIdentity:
                 
         except Exception as e:
             logger.error(f"Error during cost estimation: {e}")
-            return None  # Return None to indicate failure
+            return None  # 失敗を示すためにNoneを返す
         
         return result

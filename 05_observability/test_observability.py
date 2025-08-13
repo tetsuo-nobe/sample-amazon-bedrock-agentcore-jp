@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-AgentCore Observability Test Script
+AgentCore可観測性テストスクリプト
 
-This script demonstrates AgentCore observability capabilities by:
-1. Reading agent ARN from .bedrock_agentcore.yaml
-2. Using meaningful session IDs (user_id + datetime format)
-3. Testing multiple invocations in the same session
-4. Intentionally causing errors to test error detection
-5. Recording observable logs in CloudWatch for monitoring
+このスクリプトは以下によってAgentCoreの可観測性機能を示します:
+1. .bedrock_agentcore.yamlからエージェントARNを読み込み
+2. 意味のあるセッションIDを使用 (user_id + datetime形式)
+3. 同じセッションでの複数呼び出しをテスト
+4. エラー検出をテストするために意図的にエラーを発生
+5. 監視用にCloudWatchに観測可能なログを記録
 
-Usage:
+使用方法:
     python test_observability.py
 """
 
@@ -21,7 +21,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any
 
-# Configure logging
+# ログ設定
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
@@ -30,32 +30,32 @@ logger = logging.getLogger(__name__)
 
 
 class ObservabilityTester:
-    """Test AgentCore observability with meaningful session tracking"""
+    """意味のあるセッション追跡でAgentCoreの可観測性をテスト"""
     
     def __init__(self, agent_arn: str, region: str = ""):
         self.agent_arn = agent_arn
         self.region = region
         if not self.region:
-            # Use default region from boto3 session if not specified
+            # 指定されていない場合はboto3セッションからデフォルトリージョンを使用
             self.region = boto3.Session().region_name
         self.client = boto3.client('bedrock-agentcore', region_name=self.region)
     
     def generate_session_id(self, user_id: str) -> str:
-        """Generate meaningful session ID with minimum length requirement"""
+        """最小長要件を満たす意味のあるセッションIDを生成"""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        # AgentCore requires session ID to be at least 16 characters
+        # AgentCoreはセッションIDが最低16文字であることを要求
         session_id = f"{user_id}_{timestamp}_observability_test"
         logger.info(f"Generated session ID: {session_id} (length: {len(session_id)})")
         return session_id
     
     def invoke_agent(self, session_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Single agent invocation with error handling"""
+        """エラーハンドリング付きの単一エージェント呼び出し"""
         try:
             response = self.client.invoke_agent_runtime(
                 agentRuntimeArn=self.agent_arn,
                 runtimeSessionId=session_id,
                 payload=json.dumps(payload).encode('utf-8'),
-                traceId=session_id[:128]  # Ensure trace ID is within limit
+                traceId=session_id[:128]  # トレースIDが制限内であることを保証
             )
             
             result = self._process_response(response)
@@ -72,10 +72,10 @@ class ObservabilityTester:
             }
     
     def test_multiple_invocations_same_session(self, user_id: str) -> Dict[str, Any]:
-        """Test multiple invocations in the same session"""
+        """同じセッションでの複数呼び出しをテスト"""
         session_id = self.generate_session_id(user_id)
         
-        # Define multiple test prompts
+        # 複数のテストプロンプトを定義
         test_prompts = [
             "I would like to prepare small EC2 for ssh. How much does it cost?",
             "What about the cost for a medium-sized RDS MySQL database?",
@@ -115,11 +115,11 @@ class ObservabilityTester:
 
     
     def _process_response(self, response: Dict[str, Any]) -> str:
-        """Process AgentCore runtime response"""
+        """AgentCoreランタイムレスポンスを処理"""
         content = []
         
         if "text/event-stream" in response.get("contentType", ""):
-            # Handle streaming response
+            # ストリーミングレスポンスを処理
             for line in response["response"].iter_lines(chunk_size=10):
                 if line:
                     line = line.decode("utf-8")
@@ -128,7 +128,7 @@ class ObservabilityTester:
                         content.append(line)
         
         elif response.get("contentType") == "application/json":
-            # Handle JSON response
+            # JSONレスポンスを処理
             for chunk in response.get("response", []):
                 content.append(chunk.decode('utf-8'))
         
@@ -139,7 +139,7 @@ class ObservabilityTester:
 
 
 def load_agent_arn() -> str:
-    """Load agent ARN from .bedrock_agentcore.yaml"""
+    """.bedrock_agentcore.yamlからエージェントARNを読み込み"""
     yaml_path = Path("../02_runtime/.bedrock_agentcore.yaml")
     
     if not yaml_path.exists():
@@ -162,21 +162,21 @@ def load_agent_arn() -> str:
 
 
 def main():
-    """Main function to run observability tests"""
+    """可観測性テストを実行するメイン関数"""
     logger.info("🚀 Starting AgentCore Observability Tests")
     
     try:
-        # Load agent ARN from configuration
+        # 設定からエージェントARNを読み込み
         agent_arn = load_agent_arn()
         logger.info(f"Loaded Agent ARN: {agent_arn}")
         
-        # Extract region from ARN
+        # ARNからリージョンを抽出
         region = agent_arn.split(':')[3]
         logger.info(f"Region: {region}")
         
         tester = ObservabilityTester(agent_arn, region)
         
-        # Test 1: Multiple successful invocations in same session
+        # テスト1: 同じセッションでの複数の成功した呼び出し
         logger.info("\n" + "="*60)
         logger.info("Invoke test invocations in Same Session")
         logger.info("="*60)

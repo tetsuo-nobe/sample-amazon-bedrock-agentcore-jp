@@ -1,8 +1,8 @@
 """
-Simple Lambda function for AgentCore Gateway that provides aws_cost_estimation tool
+aws_cost_estimationツールを提供するAgentCore Gateway用のシンプルLambda関数
 
-This Lambda function calls the AgentCore Runtime deployed in 02_runtime
-to estimate AWS costs using the cost estimator agent.
+このLambda関数は02_runtimeにデプロイされたAgentCore Runtimeを呼び出し、
+コスト見積もりエージェントを使用してAWSコストを見積もります。
 """
 
 import json
@@ -11,18 +11,18 @@ import os
 import boto3
 import uuid
 
-# Configure logging
+# ログ設定
 logger = logging.getLogger()
 logger.setLevel(os.environ.get('LOG_LEVEL', 'INFO'))
 
 
 def lambda_handler(event, context):
     """
-    Handle aws_cost_estimation tool invocation from Gateway
+    Gatewayからのaws_cost_estimationツール呼び出しを処理
     
     Args:
-        event: Contains the architecture description to estimate costs for
-        context: Lambda context with Gateway metadata. Its `client_context` should contain
+        event: コスト見積もり対象のアーキテクチャ説明を含む
+        context: Gatewayメタデータを持つLambdaコンテキスト。`client_context`には以下が含まれる必要があります
         ClientContext(custom={
             'bedrockAgentCoreGatewayId': 'Y02ERAYBHB'
             'bedrockAgentCoreTargetId': 'RQHDN3J002'
@@ -30,33 +30,33 @@ def lambda_handler(event, context):
             'bedrockAgentCoreToolName': 'weather_tool'
             'bedrockAgentCoreSessionId': ''
         },env=None,client=None]
-        please refer : https://github.com/awslabs/amazon-bedrock-agentcore-samples/tree/main/01-tutorials/02-AgentCore-gateway/01-transform-lambda-into-mcp-tools
+        参考 : https://github.com/awslabs/amazon-bedrock-agentcore-samples/tree/main/01-tutorials/02-AgentCore-gateway/01-transform-lambda-into-mcp-tools
 
     Returns:
-        Cost estimation result from AgentCore Runtime
+        AgentCore Runtimeからのコスト見積もり結果
     """
     try:
-        # Log the incoming request
+        # 入力リクエストをログ出力
         logger.info(f"Received event: {json.dumps(event)}")
         logger.info(f"Context: {context.client_context}")
         
-        # Extract tool name from context
+        # コンテキストからツール名を抽出
         tool_name = context.client_context.custom.get('bedrockAgentCoreToolName', '')
         
-        # Remove any prefix added by Gateway (format: targetName___toolName)
+        # Gatewayによって追加されたプレフィックスを削除（形式: targetName___toolName）
         if "___" in tool_name:
             tool_name = tool_name.split("___")[-1]
         
         logger.info(f"Processing tool: {tool_name}")
         
-        # Verify this is the aws_cost_estimation tool
+        # aws_cost_estimationツールであることを確認
         if tool_name != 'aws_cost_estimation':
             return {
                 'statusCode': 400,
                 'body': f"Unknown tool: {tool_name}"
             }
         
-        # Get the architecture description from event
+        # イベントからアーキテクチャ説明を取得
         architecture_description = event.get('architecture_description', '')
         if not architecture_description:
             return {
@@ -64,12 +64,12 @@ def lambda_handler(event, context):
                 'body': "Missing required parameter: architecture_description"
             }
 
-        # Get AgentCore Runtime ARN from environment
+        # 環境変数からAgentCore Runtime ARNを取得
         runtime_arn = os.environ.get('AGENTCORE_RUNTIME_ARN')
         if not runtime_arn:
             raise ValueError("AGENTCORE_RUNTIME_ARN environment variable not set")
         
-        # Call the AgentCore Runtime
+        # AgentCore Runtimeを呼び出し
         result = invoke_cost_estimator_runtime(runtime_arn, architecture_description)
 
         return {
@@ -87,30 +87,30 @@ def lambda_handler(event, context):
 
 def invoke_cost_estimator_runtime(runtime_arn, architecture_description):
     """
-    Invoke the cost estimator agent in AgentCore Runtime
+    AgentCore Runtime内のコスト見積もりエージェントを呼び出し
     
     Args:
-        runtime_arn: ARN of the AgentCore Runtime
-        architecture_description: Description of AWS architecture to estimate
+        runtime_arn: AgentCore RuntimeのARN
+        architecture_description: 見積もり対象のAWSアーキテクチャの説明
         
     Returns:
-        Cost estimation result as string
+        文字列としてのコスト見積もり結果
     """
-    # Initialize AgentCore client
+    # AgentCoreクライアントを初期化
     client = boto3.client('bedrock-agentcore')
     
-    # Prepare the payload for cost estimation
+    # コスト見積もり用のペイロードを準備
     payload = {
         "prompt": architecture_description
     }
     
-    # Generate session ID for this request
+    # このリクエスト用のセッションIDを生成
     session_id = str(uuid.uuid4())
     
     logger.info(f"Invoking AgentCore Runtime with session: {session_id}")
     
-    # Invoke the runtime
-    # Explicitly set the traceId to avoid `Value at 'traceId' failed to satisfy constraint: Member must have length less than or equal to 128\` error
+    # ランタイムを呼び出し
+    # `Value at 'traceId' failed to satisfy constraint: Member must have length less than or equal to 128`エラーを回避するためにtraceIdを明示的に設定
     response = client.invoke_agent_runtime(
         agentRuntimeArn=runtime_arn,
         runtimeSessionId=session_id,
@@ -118,9 +118,9 @@ def invoke_cost_estimator_runtime(runtime_arn, architecture_description):
         traceId=session_id,
     )
     
-    # Process response
+    # レスポンスを処理
     if "text/event-stream" in response.get("contentType", ""):    
-        # Handle streaming response
+        # ストリーミングレスポンスを処理
         content = []
         for line in response["response"].iter_lines(chunk_size=10):
             if line:
@@ -130,7 +130,7 @@ def invoke_cost_estimator_runtime(runtime_arn, architecture_description):
                     content.append(line)
 
     elif response.get("contentType") == "application/json":
-        # Handle standard JSON response
+        # 標準JSONレスポンスを処理
         content = []
         for chunk in response.get("response", []):
             content.append(chunk.decode('utf-8'))

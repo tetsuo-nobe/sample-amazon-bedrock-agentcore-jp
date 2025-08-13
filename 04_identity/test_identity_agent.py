@@ -1,19 +1,19 @@
 """
-Test the AgentCore Identity implementation with existing Cognito M2M OAuth.
+既存のCognito M2M OAuthでAgentCore Identity実装をテスト。
 
-This test demonstrates:
-1. Using @requires_access_token with existing Cognito configuration
-2. Creating an authenticated agent that calls the Gateway
-3. Performing cost estimation with proper access controls
-4. Token management and caching behavior
-5. Error handling and recovery patterns
+このテストは以下を示します:
+1. 既存のCognito設定で@requires_access_tokenを使用
+2. Gatewayを呼び出す認証されたエージェントを作成
+3. 適切なアクセス制御でコスト見積もりを実行
+4. トークン管理とキャッシュ動作
+5. エラーハンドリングと復旧パターン
 
-Prerequisites:
-- Gateway deployed (03_gateway)
-- OAuth2 credential provider created (setup_credential_provider.py)
-- AWS credentials configured
+前提条件:
+- Gatewayがデプロイ済み (03_gateway)
+- OAuth2認証プロバイダーが作成済み (setup_credential_provider.py)
+- AWS認証情報が設定済み
 
-Usage:
+使用方法:
     uv run 05_identity/test_identity_agent.py
 """
 
@@ -22,7 +22,7 @@ import logging
 import time
 from agent_with_identity import AgentWithIdentity
 
-# Configure logging for detailed test output
+# 詳細なテスト出力のためのログ設定
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -32,17 +32,17 @@ logger = logging.getLogger(__name__)
 
 async def test_identity_protected_estimation():
     """
-    Test cost estimation with AgentCore Identity authentication.
+    AgentCore Identity認証でコスト見積もりをテスト。
     
-    This test verifies:
-    - Complete authentication flow works end-to-end
-    - MCP client can authenticate with Gateway
-    - Cost estimation tool is accessible and functional
+    このテストは以下を検証:
+    - 完全な認証フローがエンドツーエンドで動作
+    - MCPクライアントがGatewayで認証可能
+    - コスト見積もりツールがアクセス可能で機能する
     """
     print("\n💰 Test 1: Identity-Protected Cost Estimation")
     print("-" * 50)
     
-    # Test architecture description
+    # テスト用アーキテクチャ説明
     test_architecture = "[quick] Amazon Translate cost for 1 book."
     
     print(f"Architecture: {test_architecture.strip()}")
@@ -51,13 +51,13 @@ async def test_identity_protected_estimation():
     try:
         agent = AgentWithIdentity()
         
-        # Perform authenticated cost estimation
+        # 認証されたコスト見積もりを実行
         logger.info("Starting authenticated cost estimation...")
         start_time = time.time()
         result = await agent.estimate_costs(test_architecture)
         end_time = time.time()
         
-        # Verify result
+        # 結果を検証
         assert result, "Cost estimation result should not be empty"
         result_text = str(result)
         assert len(result_text) > 100, "Result should contain substantial content"
@@ -79,7 +79,7 @@ async def test_identity_protected_estimation():
 
 
 async def run_all_tests():
-    """Run all AgentCore Identity tests"""
+    """全てのAgentCore Identityテストを実行"""
     
     print("🚀 Starting AgentCore Identity Test Suite")
     print("=" * 60)
@@ -88,7 +88,7 @@ async def run_all_tests():
     passed = 0
     total = 1
     
-    # Test 1: Identity-protected cost estimation
+    # テスト1: Identity保護されたコスト見積もり
     test_name = "Identity-Protected Cost Estimation"
     try:
         logger.info(f"Running test: {test_name}")
@@ -102,7 +102,7 @@ async def run_all_tests():
     
     end_time = time.time()
     
-    # Print test summary
+    # テストサマリーを印刷
     print("\n📊 Test Results Summary")
     print("=" * 60) 
     print(f"Tests passed: {passed}/{total}")

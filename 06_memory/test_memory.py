@@ -1,17 +1,17 @@
 """
-AWS Cost Estimator Agent with AgentCore Memory
+AgentCore Memoryを持つAWSコスト見積もりエージェント
 
-This implementation demonstrates AgentCore Memory capabilities by enhancing
-the AWS Cost Estimator with both short-term and long-term memory features.
+この実装は、AWSコスト見積もりに短期メモリと長期メモリの
+両方の機能を追加することで、AgentCore Memoryの機能を示します。
 
-Key Features:
-1. Short-term Memory: Stores multiple cost estimations within a session for comparison
-2. Long-term Memory: Learns user decision patterns and preferences over time
-3. Comparison Feature: Enables side-by-side comparison of multiple estimates
-4. Decision Insights: Provides personalized recommendations based on historical patterns
+主要機能:
+1. 短期メモリ: 比較のためにセッション内で複数のコスト見積もりを保存
+2. 長期メモリ: 時間をかけてユーザーの意思決定パターンと好みを学習
+3. 比較機能: 複数の見積もりの並べて比較を可能に
+4. 意思決定洞察: 過去のパターンに基づいたパーソナライズされた推奨事項を提供
 
-The AgentWithMemory class integrates memory functionality with the existing
-cost estimator agent, providing a comprehensive example of memory usage patterns.
+AgentWithMemoryクラスはメモリ機能を既存の
+コスト見積もりエージェントと統合し、メモリ使用パターンの包括的な例を提供します。
 """
 
 import sys
@@ -23,7 +23,7 @@ import json
 import boto3
 from datetime import datetime
 
-# Configure logging for debugging and monitoring
+# デバッグと監視のためのログ設定
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -31,81 +31,81 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Add the parent directory to the path to import from 01_code_interpreter
+# 01_code_interpreterからインポートするために親ディレクトリをパスに追加
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "01_code_interpreter"))
 
 from strands import Agent, tool  # noqa: E402
 from bedrock_agentcore.memory.client import MemoryClient  # noqa: E402
 from cost_estimator_agent.cost_estimator_agent import AWSCostEstimatorAgent  # noqa: E402
 
-# Prompt Templates
-SYSTEM_PROMPT = """You are an AWS Cost Estimator Agent with memory capabilities.
+# プロンプトテンプレート
+SYSTEM_PROMPT = """あなたはメモリ機能を持つAWSコスト見積もりエージェントです。
 
-You can help users with:
-1. estimate: Calculate costs for AWS architectures
-2. compare: Compare multiple cost estimates side-by-side
-3. propose: Recommend optimal architecture based on user preferences and history
+ユーザーを以下で支援できます:
+1. estimate: AWSアーキテクチャのコストを計算
+2. compare: 複数のコスト見積もりを並べて比較
+3. propose: ユーザーの好みと履歴に基づいて最適なアーキテクチャを推奨
 
-Always provide detailed explanations and consider the user's historical preferences
-when making recommendations."""
+常に詳細な説明を提供し、推奨事項を作成する際には
+ユーザーの過去の好みを考慮してください。"""
 
-COMPARISON_PROMPT_TEMPLATE = """Compare the following AWS cost estimates and provide insights:
+COMPARISON_PROMPT_TEMPLATE = """以下のAWSコスト見積もりを比較し、洞察を提供してください:
 
-User Request: {request}
+ユーザーリクエスト: {request}
 
-Estimates:
+見積もり:
 {estimates}
 
-Please provide:
-1. A summary of each estimate
-2. Key differences between the architectures
-3. Cost comparison insights
-4. Recommendations based on the comparison
+以下を提供してください:
+1. 各見積もりの概要
+2. アーキテクチャ間の主要な違い
+3. コスト比較の洞察
+4. 比較に基づいた推奨事項
 """
 
-PROPOSAL_PROMPT_TEMPLATE = """Generate an AWS architecture proposal based on the following:
+PROPOSAL_PROMPT_TEMPLATE = """以下に基づいてAWSアーキテクチャ提案を生成してください:
 
-User Requirements: {requirements}
+ユーザー要件: {requirements}
 
-Historical Preferences and Patterns:
+過去の好みとパターン:
 {historical_data}
 
-Please provide:
-1. Recommended architecture overview
-2. Key components and services
-3. Estimated costs (rough estimates)
-4. Scalability considerations
-5. Security best practices
-6. Cost optimization recommendations
+以下を提供してください:
+1. 推奨アーキテクチャの概要
+2. 主要コンポーネントとサービス
+3. 予想コスト（概算）
+4. スケーラビリティの考慮事項
+5. セキュリティのベストプラクティス
+6. コスト最適化の推奨事項
 
-Make the proposal personalized based on any available historical preferences.
+利用可能な過去の好みに基づいて提案をパーソナライズしてください。
 """
 
 
 class AgentWithMemory:
     """
-    AWS Cost Estimator Agent enhanced with AgentCore Memory capabilities
+    AgentCore Memory機能で強化されたAWSコスト見積もりエージェント
     
-    This class demonstrates the practical distinction between short-term and
-    long-term memory through cost estimation and comparison features:
+    このクラスはコスト見積もりと比較機能を通じて、
+    短期メモリと長期メモリの実用的な区別を示します:
     
-    - Short-term memory: Stores estimates within session for immediate comparison
-    - Long-term memory: Learns user preferences and decision patterns over time
+    - 短期メモリ: 即座比較のためにセッション内で見積もりを保存
+    - 長期メモリ: 時間をかけてユーザーの好みと意思決定パターンを学習
     """
     
     def __init__(self, actor_id: str, region: str = "", force_recreate: bool = False):
         """
-        Initialize the agent with memory capabilities
+        メモリ機能でエージェントを初期化
         
         Args:
-            actor_id: Unique identifier for the user/actor (used for memory namespace)
-            region: AWS region for AgentCore services
-            force_recreate: If True, delete existing memory and create new one
+            actor_id: ユーザー/アクターの一意識別子（メモリ名前空間に使用）
+            region: AgentCoreサービス用のAWSリージョン
+            force_recreate: Trueの場合、既存のメモリを削除して新しいものを作成
         """
         self.actor_id = actor_id
         self.region = region
         if not self.region:
-            # Use default region from boto3 session if not specified
+            # 指定されていない場合はboto3セッションからデフォルトリージョンを使用
             self.region = boto3.Session().region_name
         self.force_recreate = force_recreate
         self.memory_id = None
@@ -119,12 +119,12 @@ class AgentWithMemory:
         if force_recreate:
             logger.info("🔄 Force recreate mode enabled - will delete existing memory")
         
-        # Initialize AgentCore Memory with user preference strategy
+        # ユーザー好み戦略でAgentCore Memoryを初期化
         try:
             logger.info("Initializing AgentCore Memory...")
             self.memory_client = MemoryClient(region_name=self.region)
             
-            # Check if memory already exists
+            # メモリが既に存在するかチェック
             memory_name = "cost_estimator_memory"
             existing_memories = self.memory_client.list_memories()
             existing_memory = None
@@ -135,13 +135,13 @@ class AgentWithMemory:
 
             if existing_memory:
                 if not force_recreate:
-                    # Reuse existing memory (default behavior)
+                    # 既存のメモリを再使用（デフォルト動作）
                     self.memory_id = existing_memory.get('id')
                     self.memory = existing_memory
                     logger.info(f"🔄 Reusing existing memory: {memory_name} (ID: {self.memory_id})")
                     logger.info("✅ Memory reuse successful - skipping creation time!")
                 else:            
-                    # Delete existing memory if force_recreate is True
+                    # force_recreateがTrueの場合は既存のメモリを削除
                     memory_id_to_delete = existing_memory.get('id')
                     logger.info(f"🗑️ Force deleting existing memory: {memory_name} (ID: {memory_id_to_delete})")
                     self.memory_client.delete_memory_and_wait(memory_id_to_delete, max_wait=300)
@@ -149,7 +149,7 @@ class AgentWithMemory:
                     existing_memory = None
 
             if existing_memory is None:
-                # Create new memory
+                # 新しいメモリを作成
                 logger.info("Creating new AgentCore Memory...")
                 self.memory = self.memory_client.create_memory_and_wait(
                     name=memory_name,
@@ -160,16 +160,16 @@ class AgentWithMemory:
                             "namespaces": [f"/preferences/{self.actor_id}"]
                         }
                     }],
-                    event_expiry_days=7,  # Minimum allowed value
+                    event_expiry_days=7,  # 許可される最小値
                 )
                 self.memory_id = self.memory.get('memoryId')
                 logger.info(f"✅ AgentCore Memory created successfully with ID: {self.memory_id}")
 
-            # Initialize Bedrock Runtime client for AI-powered features
+            # AI機能用のBedrock Runtimeクライアントを初期化
             self.bedrock_runtime = boto3.client('bedrock-runtime', region_name=self.region)
             logger.info("✅ Bedrock Runtime client initialized")
             
-            # Create the agent with cost estimation tools and callback handler
+            # コスト見積もりツールとコールバックハンドラーでエージェントを作成
             self.agent = Agent(
                 tools=[self.estimate, self.compare, self.propose],
                 system_prompt=SYSTEM_PROMPT
@@ -179,13 +179,13 @@ class AgentWithMemory:
             logger.exception(f"❌ Failed to initialize AgentWithMemory: {e}")
 
     def __enter__(self):
-        """Context manager entry"""
+        """コンテキストマネージャーエントリ"""
         return self.agent
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit - preserves memory by default for debugging"""
-        # Memory is preserved by default to speed up debugging
-        # Use --force to recreate memory when needed
+        """コンテキストマネージャー終了 - デバッグのためデフォルトでメモリを保持"""
+        # デバッグを高速化するためデフォルトでメモリを保持
+        # 必要に応じて--forceを使用してメモリを再作成
         try:
             if self.memory_client and self.memory_id:
                 logger.info("🧹 Memory preserved for reuse (use --force to recreate)")
@@ -194,7 +194,7 @@ class AgentWithMemory:
             logger.warning(f"⚠️ Error in context manager exit: {e}")
 
     def list_memory_events(self, max_results: int = 10):
-        """Helper method to inspect memory events for debugging"""
+        """デバッグ用にメモリイベントを検査するヘルパーメソッド"""
         try:
             if not self.memory_client or not self.memory_id:
                 return "❌ Memory not available"
@@ -218,10 +218,10 @@ class AgentWithMemory:
     @tool
     def estimate(self, architecture_description: str) -> str:
         """
-        Estimate costs for an AWS architecture
+        AWSアーキテクチャのコストを見積もり
         
         Args:
-            architecture_description: Description of the AWS architecture to estimate
+            architecture_description: 見積もり対象のAWSアーキテクチャの説明
             
         Returns:
             Cost estimation results
@@ -229,10 +229,10 @@ class AgentWithMemory:
         try:
             logger.info(f"🔍 Estimating costs for: {architecture_description}")
             
-            # Use the existing cost estimator agent
+            # 既存のコスト見積もりエージェントを使用
             cost_estimator = AWSCostEstimatorAgent(region=self.region)
             result = cost_estimator.estimate_costs(architecture_description)
-            # Store event in memory
+            # メモリにイベントを保存
             logger.info("Store event to short term memory")
             self.memory_client.create_event(
                 memory_id=self.memory_id,
@@ -244,7 +244,7 @@ class AgentWithMemory:
                 ]
             )
 
-            # The memory hook will automatically store this interaction
+            # メモリフックがこのインタラクションを自動的に保存
             logger.info("✅ Cost estimation completed")
             return result
             
@@ -255,20 +255,20 @@ class AgentWithMemory:
     @tool
     def compare(self, request: str = "Compare my recent estimates") -> str:
         """
-        Compare multiple cost estimates from memory
+        メモリから複数のコスト見積もりを比較
         
         Args:
-            request: Description of what to compare
+            request: 比較対象の説明
             
         Returns:
-            Detailed comparison of estimates
+            見積もりの詳細な比較
         """
         logger.info("📊 Retrieving estimates for comparison...")
         
         if not self.memory_client or not self.memory_id:
             return "❌ Memory not available for comparison"
         
-        # Retrieve recent estimate events from memory
+        # メモリから最近の見積もりイベントを取得
         events = self.memory_client.list_events(
             memory_id=self.memory_id,
             actor_id=self.actor_id,
@@ -276,11 +276,11 @@ class AgentWithMemory:
             max_results=4
         )
         
-        # Filter and parse estimate tool calls
+        # 見積もりツール呼び出しをフィルターして解析
         estimates = []
         for event in events:
             try:
-                # Extract payload data
+                # ペイロードデータを抽出
                 _input = ""
                 _output = ""
                 for payload in event.get('payload', []):
@@ -312,7 +312,7 @@ class AgentWithMemory:
         if not estimates:
             raise Exception("ℹ️ No previous estimates found for comparison. Please run some estimates first.") 
         
-        # Generate comparison using Bedrock
+        # Bedrockを使用して比較を生成
         logger.info(f"🔍 Comparing {len(estimates)} estimates... {estimates}")
         comparison_prompt = COMPARISON_PROMPT_TEMPLATE.format(
             request=request,
@@ -327,13 +327,13 @@ class AgentWithMemory:
     @tool
     def propose(self, requirements: str) -> str:
         """
-        Propose optimal architecture based on user preferences and history
+        ユーザーの好みと履歴に基づいて最適なアーキテクチャを提案
         
         Args:
-            requirements: User requirements for the architecture
+            requirements: アーキテクチャのユーザー要件
             
         Returns:
-            Personalized architecture recommendation
+            パーソナライズされたアーキテクチャ推奨
         """
         try:
             logger.info("💡 Generating architecture proposal based on user history...")
@@ -341,7 +341,7 @@ class AgentWithMemory:
             if not self.memory_client or not self.memory_id:
                 return "❌ Memory not available for personalized recommendations"
             
-            # Retrieve user preferences and patterns from long-term memory
+            # 長期メモリからユーザーの好みとパターンを取得
             memories = self.memory_client.retrieve_memories(
                 memory_id=self.memory_id,
                 namespace=f"/preferences/{self.actor_id}",
@@ -350,7 +350,7 @@ class AgentWithMemory:
             )
             contents = [memory.get('content', {}).get('text', '') for memory in memories]
 
-            # Generate proposal using Bedrock
+            # Bedrockを使用して提案を生成
             logger.info(f"🔍 Generating proposal with requirements: {requirements}\nHistorical data: {contents}")
             proposal_prompt = PROPOSAL_PROMPT_TEMPLATE.format(
                 requirements=requirements,
@@ -368,19 +368,19 @@ class AgentWithMemory:
 
     def _generate_with_bedrock(self, prompt: str) -> str:
         """
-        Generate content using Amazon Bedrock Converse API
+        Amazon Bedrock Converse APIを使用してコンテンツを生成
         
         Args:
-            prompt: The prompt to send to Bedrock
+            prompt: Bedrockに送信するプロンプト
             
         Returns:
-            Generated content from Bedrock
+            Bedrockから生成されたコンテンツ
         """
         try:
-            # Use Claude 3 Haiku for fast, cost-effective generation
+            # 高速でコスト効率の良い生成のためにClaude 3 Haikuを使用
             model_id = "anthropic.claude-3-haiku-20240307-v1:0"
             
-            # Prepare the message
+            # メッセージを準備
             messages = [
                 {
                     "role": "user",
@@ -388,7 +388,7 @@ class AgentWithMemory:
                 }
             ]
             
-            # Invoke the model using Converse API
+            # Converse APIを使用してモデルを呼び出し
             response = self.bedrock_runtime.converse(
                 modelId=model_id,
                 messages=messages,
@@ -398,7 +398,7 @@ class AgentWithMemory:
                 }
             )
             
-            # Extract the response text
+            # レスポンステキストを抽出
             output_message = response['output']['message']
             generated_text = output_message['content'][0]['text']
             
@@ -406,7 +406,7 @@ class AgentWithMemory:
             
         except Exception as e:
             logger.error(f"Bedrock generation failed: {e}")
-            # Fallback to a simple response if Bedrock fails
+            # Bedrockが失敗した場合のシンプルなレスポンスへのフォールバック
             return f"⚠️ AI generation failed. Error: {str(e)}"
 
 
@@ -415,9 +415,9 @@ def main():
         description="AWS Cost Estimator Agent with AgentCore Memory",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Examples:
-  python test_memory.py              # Reuse existing memory (fast debugging)
-  python test_memory.py --force      # Force recreate memory (clean start)
+例:
+  python test_memory.py              # 既存のメモリを再使用（高速デバッグ）
+  python test_memory.py --force      # メモリを強制再作成（クリーンスタート）
         """
     )
     parser.add_argument(
@@ -437,11 +437,11 @@ Examples:
         print("⚡ Fast mode: Will reuse existing memory")
     
     try:
-        # Use context manager to ensure proper cleanup
+        # 適切なクリーンアップを保証するためにコンテキストマネージャーを使用
         with AgentWithMemory(actor_id="user123", force_recreate=args.force) as agent:
             print("\n📝 Running cost estimates for different architectures...")
             
-            # Estimate costs for three different architectures
+            # 3つの異なるアーキテクチャのコストを見積もり
             architectures = [
                 "Single EC2 t3.micro instance with RDS MySQL for a small blog",
                 "Load balanced EC2 t3.small instances with RDS MySQL for medium traffic web app"

@@ -1,15 +1,15 @@
 """
-Setup OAuth2 credential provider for AgentCore Identity using existing Cognito configuration.
+既存のCognito設定を使用してAgentCore Identity用のOAuth2認証プロバイダーをセットアップ。
 
-This script creates an OAuth2 credential provider that integrates with the existing
-Cognito M2M OAuth setup from the gateway configuration. The provider enables
-AgentCore Identity to securely manage access tokens for authenticated API calls.
+このスクリプトは、gateway設定からの既存の
+Cognito M2M OAuthセットアップと統合するOAuth2認証プロバイダーを作成します。プロバイダーは
+AgentCore Identityが認証されたAPI呼び出しのためにアクセストークンをセキュアに管理できるようにします。
 
-Prerequisites:
-- Gateway must be deployed (03_gateway)
-- AWS credentials configured with bedrock-agentcore-control permissions
+前提条件:
+- Gatewayがデプロイ済み (03_gateway)
+- bedrock-agentcore-control権限でAWS認証情報が設定済み
 
-Usage:
+使用方法:
     uv run 05_identity/setup_credential_provider.py
 """
 
@@ -19,7 +19,7 @@ import logging
 from pathlib import Path
 from botocore.exceptions import ClientError
 
-# Configure logging for clear debugging
+# 明確なデバッグのためのログ設定
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -30,21 +30,21 @@ PROVIDER_NAME = "agentcore-identity-for-gateway"
 
 def setup_oauth2_credential_provider(provider_name: str = PROVIDER_NAME):
     """
-    Setup OAuth2 credential provider for AgentCore Identity.
+    AgentCore Identity用のOAuth2認証プロバイダーをセットアップ。
     
-    This function:
-    1. Loads existing Cognito configuration from gateway setup
-    2. Creates OAuth2 credential provider using Cognito discovery URL
-    3. Configures client credentials for M2M authentication
+    この関数は:
+    1. gatewayセットアップから既存のCognito設定を読み込み
+    2. CognitoディスカバリーURLを使用してOAuth2認証プロバイダーを作成
+    3. M2M認証用のクライアント認証情報を設定
     
     Args:
-        provider_name: Name for the credential provider
+        provider_name: 認証プロバイダーの名前
         
     Returns:
-        bool: True if successful, False otherwise
+        bool: 成功した場合True、そうでなければFalse
     """
     
-    # Load gateway configuration from existing setup
+    # 既存のセットアップからgateway設定を読み込み
     config_path = Path("../03_gateway/gateway_config.json")
     if not config_path.exists():
         logger.error(f"Gateway configuration not found at {config_path}")
@@ -59,20 +59,20 @@ def setup_oauth2_credential_provider(provider_name: str = PROVIDER_NAME):
         logger.error(f"Failed to load gateway configuration: {e}")
         return False
     
-    # Extract Cognito configuration
+    # Cognito設定を抽出
     cognito_config = gateway_config['cognito']
     region = gateway_config['region']
     user_pool_id = cognito_config['user_pool_id']
     
-    # Construct OpenID Connect discovery URL for Cognito
-    # This URL provides OAuth2 endpoints and configuration
+    # Cognito用のOpenID ConnectディスカバリーURLを構築
+    # このURLはOAuth2エンドポイントと設定を提供
     discovery_url = f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}/.well-known/openid-configuration"
     
     logger.info(f"Using Cognito discovery URL: {discovery_url}")
     logger.info(f"Client ID: {cognito_config['client_id']}")
     logger.info(f"Scope: {cognito_config['scope']}")
     
-    # Create bedrock-agentcore-control client for managing credential providers
+    # 認証プロバイダー管理用のbedrock-agentcore-controlクライアントを作成
     try:
         client = boto3.client('bedrock-agentcore-control', region_name=region)
         logger.info(f"✅ Created AgentCore control client for region {region}")
@@ -80,13 +80,13 @@ def setup_oauth2_credential_provider(provider_name: str = PROVIDER_NAME):
         logger.error(f"Failed to create AgentCore control client: {e}")
         return False
     
-    # Check if credential provider already exists
+    # 認証プロバイダーが既に存在するかチェック
     try:
         logger.info("Checking for existing credential providers...")
-        # API Reference: https://docs.aws.amazon.com/bedrock-agentcore-control/latest/APIReference/API_ListOauth2CredentialProviders.html
+        # APIリファレンス: https://docs.aws.amazon.com/bedrock-agentcore-control/latest/APIReference/API_ListOauth2CredentialProviders.html
         response = client.list_oauth2_credential_providers()
         
-        # Response contains 'credentialProviders' array
+        # レスポンスには'credentialProviders'配列が含まれる
         for provider in response.get('credentialProviders', []):
             if provider['name'] == provider_name:
                 logger.info(f"✅ Credential provider '{provider_name}' already exists")
@@ -98,7 +98,7 @@ def setup_oauth2_credential_provider(provider_name: str = PROVIDER_NAME):
         logger.error(f"Failed to list credential providers: {e}")
         return False
     
-    # Create new credential provider configuration
+    # 新しい認証プロバイダー設定を作成
     # https://docs.aws.amazon.com/bedrock-agentcore-control/latest/APIReference/API_CustomOauth2ProviderConfigInput.html
     # https://docs.aws.amazon.com/bedrock-agentcore-control/latest/APIReference/API_Oauth2Discovery.html
     oauth2_config = {
@@ -113,7 +113,7 @@ def setup_oauth2_credential_provider(provider_name: str = PROVIDER_NAME):
     
     try:
         logger.info(f"Creating OAuth2 credential provider '{provider_name}'...")
-        # API Reference: https://docs.aws.amazon.com/bedrock-agentcore-control/latest/APIReference/API_CreateOauth2CredentialProvider.html
+        # APIリファレンス: https://docs.aws.amazon.com/bedrock-agentcore-control/latest/APIReference/API_CreateOauth2CredentialProvider.html
         response = client.create_oauth2_credential_provider(
             name=provider_name,
             credentialProviderVendor='CustomOauth2',
@@ -137,7 +137,7 @@ def setup_oauth2_credential_provider(provider_name: str = PROVIDER_NAME):
         return False
 
 def main():
-    """Main function to setup credential provider"""
+    """認証プロバイダーをセットアップするメイン関数"""
     print("🚀 Setting up AgentCore Identity OAuth2 Credential Provider")
     print("=" * 60)
     
