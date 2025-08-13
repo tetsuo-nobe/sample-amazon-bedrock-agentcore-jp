@@ -237,13 +237,13 @@ class AWSCostEstimatorAgent:
 
     def estimate_costs(self, architecture_description: str) -> str:
         """
-        Estimate costs for a given architecture description
-        
-        Args:
-            architecture_description: Description of the system to estimate
-            
-        Returns:
-            Cost estimation results as concatenated string
+        指定されたアーキテクチャ記述のコストを見積もる
+
+        引数:
+        architecture_description: 見積もるシステムの説明
+
+        戻り値:
+        コスト見積結果を連結した文字列として返す
         """
         logger.info("📊 Starting cost estimation...")
         logger.info(f"Architecture: {architecture_description}")
@@ -275,22 +275,22 @@ class AWSCostEstimatorAgent:
 
     async def estimate_costs_stream(self, architecture_description: str) -> AsyncGenerator[dict, None]:
         """
-        Estimate costs for a given architecture description with streaming response
-        
-        Implements proper delta-based streaming following Amazon Bedrock best practices.
-        This addresses the common issue where Strands stream_async() may send overlapping
-        content chunks instead of proper deltas.
-        
-        Args:
-            architecture_description: Description of the system to estimate
-            
-        Yields:
-            Streaming events with true delta content (only new text, no duplicates)
-            
-        Example usage:
-            async for event in agent.estimate_costs_stream(description):
-                if "data" in event:
-                    print(event["data"], end="", flush=True)  # Direct printing, no accumulation needed
+        ストリーミングレスポンスを使用して、指定されたアーキテクチャ記述のコストを見積もる
+
+        Amazon Bedrock のベストプラクティスに従い、適切な差分ベースのストリーミングを実装します。
+
+        これは、Strands の stream_async() が適切な差分ではなく、重複したコンテンツチャンクを送信するという一般的な問題に対処します。
+
+        引数:
+        architecture_description: 見積もるシステムの説明
+
+        結果:
+        真の差分コンテンツを含むストリーミングイベント（新しいテキストのみ、重複なし）
+
+        使用例:
+        async for event in agent.estimate_costs_stream(description):
+            if "data" in event:
+                print(event["data"], end="", flash=True) # 直接出力、累積は不要
         """
         logger.info("📊 Starting streaming cost estimation...")
         logger.info(f"Architecture: {architecture_description}")
