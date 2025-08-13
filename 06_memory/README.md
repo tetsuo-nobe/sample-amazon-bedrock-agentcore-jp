@@ -1,90 +1,90 @@
-# AgentCore Memory Integration
+# AgentCore Memory統合
 
 [English](README.md) / [日本語](README_ja.md)
 
-This implementation demonstrates **AgentCore Memory** capabilities by enhancing the AWS Cost Estimator with both short-term and long-term memory features. The `AgentWithMemory` class provides practical examples of memory usage patterns for cost estimation, comparison, and personalized recommendations.
+この実装では、短期および長期メモリ機能の両方でAWSコスト見積もりツールを強化する **AgentCore Memory** 機能を実演します。`AgentWithMemory`クラスは、コスト見積もり、比較、パーソナライズされた推奨のためのメモリ使用パターンの実践的な例を提供します。
 
-## Process Overview
+## プロセス概要
 
 ```mermaid
 sequenceDiagram
-    participant User as User
+    participant User as ユーザー
     participant Agent as AgentWithMemory
     participant Memory as AgentCore Memory
-    participant Estimator as Cost Estimator
+    participant Estimator as コスト見積もりツール
     participant Bedrock as Amazon Bedrock
 
     User->>Agent: estimate("t3.micro + RDS")
-    Agent->>Estimator: Calculate costs
-    Estimator-->>Agent: Cost results
-    Agent->>Memory: Store interaction
-    Memory-->>Agent: Event stored
-    Agent-->>User: Cost estimate
+    Agent->>Estimator: コストを計算
+    Estimator-->>Agent: コスト結果
+    Agent->>Memory: インタラクションを保存
+    Memory-->>Agent: イベント保存済み
+    Agent-->>User: コスト見積もり
 
-    User->>Agent: compare("my estimates")
-    Agent->>Memory: Retrieve events
-    Memory-->>Agent: Historical estimates
-    Agent->>Bedrock: Generate comparison
-    Bedrock-->>Agent: Comparison analysis
-    Agent-->>User: Side-by-side comparison
+    User->>Agent: compare("私の見積もり")
+    Agent->>Memory: イベントを取得
+    Memory-->>Agent: 履歴見積もり
+    Agent->>Bedrock: 比較を生成
+    Bedrock-->>Agent: 比較分析
+    Agent-->>User: 並列比較
 
-    User->>Agent: propose("optimal architecture")
-    Agent->>Memory: Retrieve preferences
-    Memory-->>Agent: User patterns
-    Agent->>Bedrock: Generate proposal
-    Bedrock-->>Agent: Personalized recommendation
-    Agent-->>User: Architecture proposal
+    User->>Agent: propose("最適なアーキテクチャ")
+    Agent->>Memory: 設定を取得
+    Memory-->>Agent: ユーザーパターン
+    Agent->>Bedrock: 提案を生成
+    Bedrock-->>Agent: パーソナライズされた推奨
+    Agent-->>User: アーキテクチャ提案
 ```
 
-## Prerequisites
+## 前提条件
 
-1. **Cost Estimator deployed** - Complete `01_code_interpreter` setup first
-2. **AWS credentials** - With `bedrock-agentcore-control` and `bedrock:InvokeModel` permissions
-3. **Dependencies** - Installed via `uv` (see pyproject.toml)
+1. **コスト見積もりツールデプロイ済み** - まず`01_code_interpreter`セットアップを完了
+2. **AWS認証情報** - `bedrock-agentcore-control`と`bedrock:InvokeModel`権限付き
+3. **依存関係** - `uv`経由でインストール（pyproject.toml参照）
 
-## How to use
+## 使用方法
 
-### File Structure
+### ファイル構成
 
 ```
 06_memory/
-├── README.md                      # This documentation
-├── test_memory.py                 # Main implementation and test suite
-└── .gitignore                     # Git ignore patterns
+├── README.md                      # このドキュメント
+├── test_memory.py                 # メイン実装とテストスイート
+└── .gitignore                     # Git無視パターン
 ```
 
-### Step 1: Run with Existing Memory (Fast)
+### ステップ1: 既存のメモリで実行（高速）
 
 ```bash
 cd 06_memory
 uv run python test_memory.py
 ```
 
-This will reuse existing memory for faster debugging and testing.
+これにより、より高速なデバッグとテストのために既存のメモリが再利用されます。
 
-### Step 2: Force Recreation (Clean Start)
+### ステップ2: 強制再作成（クリーンスタート）
 
 ```bash
 cd 06_memory
 uv run python test_memory.py --force
 ```
 
-This will delete existing memory and create a fresh instance for clean testing.
+これにより、既存のメモリが削除され、クリーンなテストのために新しいインスタンスが作成されます。
 
-## Key Implementation Patterns
+## 主要な実装パターン
 
-### Memory-Enhanced Agent
+### メモリ拡張エージェント
 
 ```python
 class AgentWithMemory:
     def __init__(self, actor_id: str, region: str = "us-west-2", force_recreate: bool = False):
-        # Initialize AgentCore Memory with user preference strategy
+        # ユーザー設定戦略でAgentCore Memoryを初期化
         self.memory = self.memory_client.create_memory_and_wait(
             name="cost_estimator_memory",
             strategies=[{
                 "userPreferenceMemoryStrategy": {
                     "name": "UserPreferenceExtractor",
-                    "description": "Extracts user preferences for AWS architecture decisions",
+                    "description": "AWSアーキテクチャ決定のためのユーザー設定を抽出",
                     "namespaces": [f"/preferences/{self.actor_id}"]
                 }
             }],
@@ -92,27 +92,27 @@ class AgentWithMemory:
         )
 ```
 
-### Context Manager Pattern
+### コンテキストマネージャーパターン
 
 ```python
-# Ensures proper resource management
+# 適切なリソース管理を保証
 with AgentWithMemory(actor_id="user123") as agent:
-    # All operations happen within this context
-    result = agent("estimate architecture: t3.micro + RDS")
-    comparison = agent("compare my estimates")
-    proposal = agent("propose optimal architecture")
-# Memory is preserved for reuse (use --force to recreate)
+    # すべての操作はこのコンテキスト内で実行
+    result = agent("アーキテクチャを見積もり: t3.micro + RDS")
+    comparison = agent("私の見積もりを比較")
+    proposal = agent("最適なアーキテクチャを提案")
+# メモリは再利用のために保持される（再作成には--forceを使用）
 ```
 
-### Memory Storage Pattern
+### メモリストレージパターン
 
 ```python
 @tool
 def estimate(self, architecture_description: str) -> str:
-    # Generate cost estimate
+    # コスト見積もりを生成
     result = cost_estimator.estimate_costs(architecture_description)
     
-    # Store interaction in memory for future comparison
+    # 将来の比較のためにメモリにインタラクションを保存
     self.memory_client.create_event(
         memory_id=self.memory_id,
         actor_id=self.actor_id,
@@ -125,65 +125,65 @@ def estimate(self, architecture_description: str) -> str:
     return result
 ```
 
-## Memory Types Demonstrated
+## 実演されるメモリタイプ
 
-### Short-term Memory (Session Context)
-- **Purpose**: Store multiple estimates within a session for immediate comparison
-- **Implementation**: Uses `list_events()` to retrieve recent interactions
-- **Use Case**: Compare 3 different EC2 instance types side-by-side
+### 短期メモリ（セッションコンテキスト）
+- **目的**: 即座の比較のためにセッション内で複数の見積もりを保存
+- **実装**: `list_events()`を使用して最近のインタラクションを取得
+- **ユースケース**: 3つの異なるEC2インスタンスタイプを並列比較
 
-### Long-term Memory (User Preferences)
-- **Purpose**: Learn user decision patterns and preferences over time
-- **Implementation**: Uses `retrieve_memories()` with user preference strategy
-- **Use Case**: Recommend architectures based on historical choices
+### 長期メモリ（ユーザー設定）
+- **目的**: 時間の経過とともにユーザーの決定パターンと設定を学習
+- **実装**: ユーザー設定戦略で`retrieve_memories()`を使用
+- **ユースケース**: 履歴の選択に基づいてアーキテクチャを推奨
 
-## Usage Examples
+## 使用例
 
-### Basic Cost Estimation with Memory
+### メモリ付き基本コスト見積もり
 
 ```python
 from test_memory import AgentWithMemory
 
 with AgentWithMemory(actor_id="user123") as agent:
-    # Generate multiple estimates
-    result1 = agent("estimate: t3.micro + RDS MySQL")
-    result2 = agent("estimate: t3.small + RDS MySQL") 
-    result3 = agent("estimate: t3.medium + RDS MySQL")
+    # 複数の見積もりを生成
+    result1 = agent("見積もり: t3.micro + RDS MySQL")
+    result2 = agent("見積もり: t3.small + RDS MySQL") 
+    result3 = agent("見積もり: t3.medium + RDS MySQL")
     
-    # Compare all estimates
-    comparison = agent("compare my recent estimates")
+    # すべての見積もりを比較
+    comparison = agent("最近の見積もりを比較")
     
-    # Get personalized recommendation
-    proposal = agent("propose optimal architecture for my needs")
+    # パーソナライズされた推奨を取得
+    proposal = agent("私のニーズに最適なアーキテクチャを提案")
 ```
 
-### Memory Inspection for Debugging
+### デバッグのためのメモリ検査
 
 ```python
 with AgentWithMemory(actor_id="user123") as agent_wrapper:
-    # Access the underlying AgentWithMemory instance
+    # 基礎となるAgentWithMemoryインスタンスにアクセス
     memory_agent = agent_wrapper
     
-    # Inspect stored events
+    # 保存されたイベントを検査
     events = memory_agent.list_memory_events(max_results=5)
-    print(f"Found {len(events)} events in memory")
+    print(f"メモリに{len(events)}個のイベントが見つかりました")
 ```
 
-## Memory Benefits
+## メモリの利点
 
-- **Session Continuity** - Compare multiple estimates within the same session
-- **Learning Capability** - Agent learns user preferences over time
-- **Personalized Recommendations** - Proposals based on historical patterns
-- **Cost Optimization** - Memory reuse reduces initialization time
-- **Debugging Support** - Event inspection for troubleshooting
+- **セッションの継続性** - 同じセッション内で複数の見積もりを比較
+- **学習能力** - エージェントは時間とともにユーザーの好みを学習
+- **パーソナライズされた推奨** - 履歴パターンに基づく提案
+- **コスト最適化** - メモリの再利用により初期化時間を削減
+- **デバッグサポート** - トラブルシューティングのためのイベント検査
 
-## References
+## 参考資料
 
-- [AgentCore Memory Developer Guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html)
-- [Memory Strategies Documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory-strategies.html)
+- [AgentCore Memory開発者ガイド](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html)
+- [メモリ戦略ドキュメント](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory-strategies.html)
 - [Amazon Bedrock Converse API](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html)
-- [Strands Agents Documentation](https://github.com/aws-samples/strands-agents)
+- [Strands Agentsドキュメント](https://github.com/aws-samples/strands-agents)
 
 ---
 
-**Next Steps**: Integrate memory-enhanced agents into your applications to provide personalized, context-aware user experiences.
+**次のステップ**: パーソナライズされたコンテキスト認識のユーザー体験を提供するために、メモリ拡張エージェントをアプリケーションに統合しましょう。

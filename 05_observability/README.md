@@ -1,60 +1,60 @@
-# AgentCore Observability Integration
+# AgentCore Observability統合
 
-[English](README.md) / [日本語](README_ja.md)
+[English](README_en.md) / [日本語](README.md)
 
-This implementation demonstrates **AgentCore Observability** with Amazon CloudWatch integration for comprehensive monitoring, tracing, and debugging of AI agents in production environments. AgentCore provides real-time visibility into agent performance through standardized OpenTelemetry (OTEL) compatible telemetry data.
+この実装では、本番環境でのAIエージェントの包括的なモニタリング、トレーシング、デバッグのためのAmazon CloudWatch統合を備えた **AgentCore Observability** を実演します。AgentCoreは、標準化されたOpenTelemetry（OTEL）互換のテレメトリデータを通じて、エージェントパフォーマンスへのリアルタイムの可視性を提供します。
 
-## Process Overview
+## プロセス概要
 
 ```mermaid
 sequenceDiagram
-    participant Agent as Strands Agent
+    participant Agent as Strandsエージェント
     participant ADOT as AWS Distro for OpenTelemetry
     participant AgentCore as AgentCore Runtime
     participant CloudWatch as Amazon CloudWatch
-    participant Console as CloudWatch Console
+    participant Console as CloudWatchコンソール
 
-    Note over Agent,Console: Session Initialization
-    Agent->>AgentCore: Start Agent Session
-    AgentCore->>CloudWatch: Create Session Metrics
+    Note over Agent,Console: セッション初期化
+    Agent->>AgentCore: エージェントセッションを開始
+    AgentCore->>CloudWatch: セッションメトリクスを作成
     
-    Note over Agent,Console: Request Processing with Tracing
-    Agent->>ADOT: Execute with opentelemetry-instrument
-    ADOT->>AgentCore: Capture Spans & Traces
-    AgentCore->>CloudWatch: Send Telemetry Data
+    Note over Agent,Console: トレーシング付きリクエスト処理
+    Agent->>ADOT: opentelemetry-instrumentで実行
+    ADOT->>AgentCore: スパンとトレースをキャプチャ
+    AgentCore->>CloudWatch: テレメトリデータを送信
     
-    Note over Agent,Console: Memory/Gateway Operations
-    Agent->>AgentCore: Memory/Gateway Operations
-    AgentCore->>CloudWatch: Service-Provided Metrics
-    AgentCore->>CloudWatch: Spans & Logs (if enabled)
+    Note over Agent,Console: メモリ/ゲートウェイ操作
+    Agent->>AgentCore: メモリ/ゲートウェイ操作
+    AgentCore->>CloudWatch: サービス提供メトリクス
+    AgentCore->>CloudWatch: スパンとログ（有効な場合）
     
-    Note over Agent,Console: Observability Dashboard
-    Console->>CloudWatch: Query Metrics & Traces
-    CloudWatch-->>Console: Display GenAI Observability
-    Console-->>Console: Trace Visualizations
-    Console-->>Console: Performance Graphs
-    Console-->>Console: Error Analysis
+    Note over Agent,Console: 可観測性ダッシュボード
+    Console->>CloudWatch: メトリクスとトレースをクエリ
+    CloudWatch-->>Console: GenAI Observabilityを表示
+    Console-->>Console: トレース可視化
+    Console-->>Console: パフォーマンスグラフ
+    Console-->>Console: エラー分析
 ```
 
-## Prerequisites
+## 前提条件
 
-### 1. Enable CloudWatch Transaction Search (One-time Setup)
+### 1. CloudWatchトランザクション検索を有効化（初回セットアップ）
 
-**Option A: Automatic Setup via AgentCore Console**
-- When creating a memory resource in the AgentCore console, click **Enable Observability** button
-- AgentCore automatically enables Transaction Search for you
+**オプションA: AgentCoreコンソール経由の自動セットアップ**
+- AgentCoreコンソールでメモリリソースを作成する際、**Enable Observability**ボタンをクリック
+- AgentCoreが自動的にトランザクション検索を有効化
 
-**Option B: Manual Setup via CloudWatch Console**
-1. Open the [CloudWatch Console](https://console.aws.amazon.com/cloudwatch)
-2. Navigate to **Application Signals (APM)** → **Transaction search**
-3. Choose **Enable Transaction Search**
-4. Select checkbox to **ingest spans as structured logs**
-5. (Optional) Adjust **X-Ray trace indexing** percentage (default: 1%)
-6. Choose **Save**
+**オプションB: CloudWatchコンソール経由の手動セットアップ**
+1. [CloudWatchコンソール](https://console.aws.amazon.com/cloudwatch)を開く
+2. **Application Signals (APM)** → **Transaction search**に移動
+3. **Enable Transaction Search**を選択
+4. **構造化ログとしてスパンを取り込む**チェックボックスを選択
+5. （オプション）**X-Rayトレースインデックス**の割合を調整（デフォルト：1%）
+6. **保存**を選択
 
-### 2. AWS Permissions Required
+### 2. 必要なAWS権限
 
-Ensure your AWS credentials include the following permissions:
+AWS認証情報に以下の権限が含まれていることを確認してください：
 ```json
 {
     "Version": "2012-10-17",
@@ -78,102 +78,102 @@ Ensure your AWS credentials include the following permissions:
 }
 ```
 
-### 3. Enable Tracing for Memory Resources
+### 3. メモリリソースのトレーシングを有効化
 
-When creating memory resources, enable tracing to capture service-provided spans:
+メモリリソースを作成する際、サービス提供のスパンをキャプチャするためトレーシングを有効化：
 
-**Via Console:**
-- Enable tracing during memory creation process
-- AgentCore prompts you to create log groups automatically
+**コンソール経由：**
+- メモリ作成プロセス中にトレーシングを有効化
+- AgentCoreが自動的にログループの作成を促す
 
-**Via CLI/SDK:**
-- Manually configure CloudWatch log groups
-- Default log group format: `/aws/bedrock-agentcore/{resource-id}`
+**CLI/SDK経由：**
+- CloudWatchログループを手動で設定
+- デフォルトのログループ形式：`/aws/bedrock-agentcore/{resource-id}`
 
-### 4. Install Dependencies
+### 4. 依存関係をインストール
 
-Add ADOT SDK and boto3 to your agent dependencies:
+エージェントの依存関係にADOT SDKとboto3を追加：
 
-**requirements.txt:**
+**requirements.txt：**
 ```txt
 aws-opentelemetry-distro>=0.10.0
 boto3
-strands-agents  # or your preferred agent framework
+strands-agents  # または好みのエージェントフレームワーク
 ```
 
-**Or install directly:**
+**または直接インストール：**
 ```bash
 pip install aws-opentelemetry-distro>=0.10.0 boto3
 ```
 
-## Observability Concepts
+## 可観測性の概念
 
-### Sessions
-- **Definition**: Complete interaction context between user and agent
-- **Scope**: Entire conversation lifecycle from initialization to termination
-- **Provides**: Context persistence, state management, conversation history
-- **Metrics**: Session count, duration, user engagement patterns
+### セッション
+- **定義**: ユーザーとエージェント間の完全なインタラクションコンテキスト
+- **スコープ**: 初期化から終了までの会話のライフサイクル全体
+- **提供内容**: コンテキストの永続性、状態管理、会話履歴
+- **メトリクス**: セッション数、継続時間、ユーザーエンゲージメントパターン
 
-### Traces
-- **Definition**: Detailed record of single request-response cycle
-- **Scope**: Complete execution path from agent invocation to response
-- **Provides**: Processing steps, tool invocations, resource utilization
-- **Metrics**: Request latency, processing time, error rates
+### トレース
+- **定義**: 単一のリクエスト-レスポンスサイクルの詳細な記録
+- **スコープ**: エージェント呼び出しからレスポンスまでの完全な実行パス
+- **提供内容**: 処理ステップ、ツール呼び出し、リソース使用率
+- **メトリクス**: リクエストレイテンシ、処理時間、エラー率
 
-### Spans
-- **Definition**: Discrete, measurable unit of work within execution flow
-- **Scope**: Fine-grained operations with start/end timestamps
-- **Provides**: Operation details, parent-child relationships, status information
-- **Metrics**: Operation duration, success/failure rates, resource usage
+### スパン
+- **定義**: 実行フロー内の離散的で測定可能な作業単位
+- **スコープ**: 開始/終了タイムスタンプを持つ細かい操作
+- **提供内容**: 操作の詳細、親子関係、ステータス情報
+- **メトリクス**: 操作期間、成功/失敗率、リソース使用量
 
-## Built-in Observability Features
+## 組み込み可観測性機能
 
 ### AgentCore Runtime
-- **Default Metrics**: Session count, latency, duration, token usage, error rates
-- **Automatic Setup**: CloudWatch log group created automatically
-- **Dashboard**: Available in CloudWatch GenAI Observability page
+- **デフォルトメトリクス**: セッション数、レイテンシ、継続時間、トークン使用量、エラー率
+- **自動セットアップ**: CloudWatchログループが自動的に作成される
+- **ダッシュボード**: CloudWatch GenAI Observabilityページで利用可能
 
-### Memory Resources
-- **Default Metrics**: Memory operations, retrieval performance
-- **Optional Spans**: Available when tracing is enabled during creation
-- **Log Groups**: Manual configuration required for CLI/SDK creation
+### メモリリソース
+- **デフォルトメトリクス**: メモリ操作、取得パフォーマンス
+- **オプションのスパン**: 作成時にトレーシングが有効な場合に利用可能
+- **ログループ**: CLI/SDK作成には手動設定が必要
 
-### Gateway Resources
-- **Default Metrics**: Gateway performance, request routing
-- **Custom Logs**: Support for user-defined log outputs
-- **Manual Setup**: CloudWatch log groups require manual configuration
+### ゲートウェイリソース
+- **デフォルトメトリクス**: ゲートウェイパフォーマンス、リクエストルーティング
+- **カスタムログ**: ユーザー定義のログ出力をサポート
+- **手動セットアップ**: CloudWatchログループは手動設定が必要
 
-### Built-in Tools
-- **Default Metrics**: Tool invocation performance
-- **Custom Logs**: Support for user-defined log outputs
-- **Manual Setup**: CloudWatch log groups require manual configuration
+### 組み込みツール
+- **デフォルトメトリクス**: ツール呼び出しパフォーマンス
+- **カスタムログ**: ユーザー定義のログ出力をサポート
+- **手動セットアップ**: CloudWatchログループは手動設定が必要
 
-## Viewing Observability Data
+## 可観測性データの表示
 
-### CloudWatch GenAI Observability Dashboard
-Access via: [CloudWatch GenAI Observability](https://console.aws.amazon.com/cloudwatch/home#gen-ai-observability)
+### CloudWatch GenAI Observabilityダッシュボード
+アクセス方法：[CloudWatch GenAI Observability](https://console.aws.amazon.com/cloudwatch/home#gen-ai-observability)
 
-**Features:**
-- Trace visualizations with execution flow
-- Performance graphs and metrics
-- Error breakdowns and analysis
-- Session and request analytics
-- Custom span metrics visualization
+**機能：**
+- 実行フローを含むトレース可視化
+- パフォーマンスグラフとメトリクス
+- エラーの内訳と分析
+- セッションとリクエスト分析
+- カスタムスパンメトリクスの可視化
 
-### CloudWatch Logs
-- Raw telemetry data storage
-- Structured log format
-- Query capabilities via CloudWatch Insights
-- Export options via AWS CLI/SDKs
+### CloudWatchログ
+- 生のテレメトリデータストレージ
+- 構造化されたログ形式
+- CloudWatch Insightsによるクエリ機能
+- AWS CLI/SDKによるエクスポートオプション
 
-## References
+## 参考資料
 
-- [AgentCore Observability Developer Guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability.html)
+- [AgentCore Observability開発者ガイド](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability.html)
 - [CloudWatch GenAI Observability](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/GenAI-observability.html)
 - [AWS Distro for OpenTelemetry](https://aws-otel.github.io/docs/introduction)
-- [OpenTelemetry Semantic Conventions for GenAI](https://opentelemetry.io/docs/specs/semconv/gen-ai/)
-- [CloudWatch Transaction Search](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Transaction-Search.html)
+- [GenAI向けOpenTelemetryセマンティック規約](https://opentelemetry.io/docs/specs/semconv/gen-ai/)
+- [CloudWatchトランザクション検索](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Transaction-Search.html)
 
 ---
 
-**Next Steps**: Enable observability in your AgentCore applications to gain comprehensive insights into agent performance, troubleshoot issues effectively, and optimize production deployments.
+**次のステップ**: AgentCoreアプリケーションで可観測性を有効にして、エージェントパフォーマンスへの包括的な洞察を得て、効果的に問題をトラブルシューティングし、本番デプロイメントを最適化しましょう。

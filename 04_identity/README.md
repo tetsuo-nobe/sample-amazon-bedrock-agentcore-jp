@@ -1,68 +1,68 @@
-# AgentCore Identity Integration
+# AgentCore Identity統合
 
-[English](README.md) / [日本語](README_ja.md)
+[English](README_en.md) / [日本語](README.md)
 
-This implementation demonstrates **AgentCore Identity** with OAuth 2.0 authentication using the existing Cognito M2M setup from the Gateway. The `@requires_access_token` decorator provides transparent token management for secure agent operations.
+この実装では、Gatewayからの既存のCognito M2Mセットアップを使用したOAuth 2.0認証を備えた **AgentCore Identity** を実演します。`@requires_access_token`デコレーターは、セキュアなエージェント操作のための透過的なトークン管理を提供します。
 
-## Process Overview
+## プロセス概要
 
 ```mermaid
 sequenceDiagram
-    participant Agent as Strands Agent
+    participant Agent as Strandsエージェント
     participant Identity as AgentCore Identity
     participant Cognito as Cognito OAuth
     participant Gateway as Gateway (03_gateway)
-    participant Tool as Cost Estimator Tool
+    participant Tool as コスト見積もりツール
 
     Agent->>Identity: @requires_access_token
-    Identity->>Cognito: OAuth M2M Flow
-    Cognito-->>Identity: Access Token
-    Identity-->>Agent: Inject Token
-    Agent->>Gateway: Authenticated MCP Request
-    Gateway->>Tool: Execute Cost Estimation
-    Tool-->>Gateway: Results
-    Gateway-->>Agent: Response
+    Identity->>Cognito: OAuth M2Mフロー
+    Cognito-->>Identity: アクセストークン
+    Identity-->>Agent: トークンを注入
+    Agent->>Gateway: 認証されたMCPリクエスト
+    Gateway->>Tool: コスト見積もりを実行
+    Tool-->>Gateway: 結果
+    Gateway-->>Agent: レスポンス
 ```
 
-## Prerequisites
+## 前提条件
 
-1. **Gateway deployed** - Complete `03_gateway` setup first
-2. **AWS credentials** - With `bedrock-agentcore-control` permissions
-3. **Dependencies** - Installed via `uv` (see pyproject.toml)
+1. **Gatewayデプロイ済み** - まず`03_gateway`セットアップを完了
+2. **AWS認証情報** - `bedrock-agentcore-control`権限付き
+3. **依存関係** - `uv`経由でインストール（pyproject.toml参照）
 
-## How to use
+## 使用方法
 
-### File Structure
+### ファイル構成
 
 ```
 04_identity/
-├── README.md                      # This documentation
-├── setup_credential_provider.py   # OAuth2 provider setup
-├── agent_with_identity.py         # Main agent implementation  
-└── test_identity_agent.py         # Test suite
+├── README.md                      # このドキュメント
+├── setup_credential_provider.py   # OAuth2プロバイダーセットアップ
+├── agent_with_identity.py         # メインエージェント実装  
+└── test_identity_agent.py         # テストスイート
 ```
 
-### Step 1: Create OAuth2 Credential Provider
+### ステップ1: OAuth2認証プロバイダーを作成
 
 ```bash
 cd 04_identity
 uv run python setup_credential_provider.py
 ```
 
-This will create an AgentCore Identity provider using your existing Cognito configuration.
+これにより、既存のCognito設定を使用してAgentCore Identityプロバイダーが作成されます。
 
-### Step 2: Test Implementation
+### ステップ2: 実装をテスト
 
 ```bash
 cd 04_identity
 uv run python test_identity_agent.py
 ```
 
-This will run comprehensive tests including authentication, cost estimation, and token caching.
+これにより、認証、コスト見積もり、トークンキャッシングを含む包括的なテストが実行されます。
 
-## Key Implementation Pattern
+## 主要な実装パターン
 
-### Using @requires_access_token
+### @requires_access_tokenの使用
 
 ```python
 from bedrock_agentcore.identity.auth import requires_access_token
@@ -74,31 +74,31 @@ from bedrock_agentcore.identity.auth import requires_access_token
     force_authentication=False
 )    
 async def get_token(*, access_token: str) -> str:
-    """Access token is automatically injected by the decorator"""
+    """アクセストークンはデコレーターによって自動的に注入されます"""
     return access_token
 ```
 
-### Two-Step Authentication Pattern
+### 2段階認証パターン
 
 ```python
-# Step 1: Get access token via AgentCore Identity
+# ステップ1: AgentCore Identity経由でアクセストークンを取得
 access_token = await agent.get_access_token()
 
-# Step 2: Create authenticated MCP client
+# ステップ2: 認証されたMCPクライアントを作成
 mcp_client = MCPClient(lambda: streamablehttp_client(
     gateway_url, 
     headers={"Authorization": f"Bearer {access_token}"}
 ))
 ```
 
-## Usage Example
+## 使用例
 
 ```python
 from agent_with_identity import AgentWithIdentity
 
 agent = AgentWithIdentity()
 result = await agent.estimate_costs("""
-    A web application with:
+    次を含むWebアプリケーション：
     - ALB + 2x EC2 t3.medium
     - RDS MySQL db.t3.micro
     - S3 + CloudFront
@@ -106,20 +106,20 @@ result = await agent.estimate_costs("""
 print(result)
 ```
 
-## Security Benefits
+## セキュリティの利点
 
-- **Zero token exposure** - Tokens never appear in logs/code
-- **Automatic lifecycle management** - AgentCore handles expiration
-- **Infrastructure reuse** - Leverages existing Gateway security
-- **M2M authentication** - Suitable for automated systems
+- **ゼロトークン露出** - トークンはログ/コードに表示されない
+- **自動ライフサイクル管理** - AgentCoreが有効期限を処理
+- **インフラストラクチャの再利用** - 既存のGatewayセキュリティを活用
+- **M2M認証** - 自動化システムに適している
 
-## References
+## 参考資料
 
-- [AgentCore Identity Developer Guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/identity.html)
-- [OAuth 2.0 Client Credentials Flow](https://tools.ietf.org/html/rfc6749#section-4.4)
-- [Cognito OAuth Integration](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-app-integration.html)
-- [Strands Agents Documentation](https://github.com/aws-samples/strands-agents)
+- [AgentCore Identity開発者ガイド](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/identity.html)
+- [OAuth 2.0クライアント認証フロー](https://tools.ietf.org/html/rfc6749#section-4.4)
+- [Cognito OAuth統合](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-app-integration.html)
+- [Strands Agentsドキュメント](https://github.com/aws-samples/strands-agents)
 
 ---
 
-**Next Steps**: Integrate identity-protected agents into your applications using the patterns demonstrated here.
+**次のステップ**: ここで実演されたパターンを使用して、アイデンティティ保護されたエージェントをアプリケーションに統合しましょう。
