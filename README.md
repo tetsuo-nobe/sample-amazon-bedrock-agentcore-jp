@@ -70,32 +70,32 @@ sample-amazon-bedrock-agentcore-onboarding/
 
 ### 🚀 クイックスタート（推奨順序）
 
-1. **[Code Interpreter](01_code_interpreter/README_ja.md)** - 基本的なエージェント開発はここから
+1. **[Code Interpreter](01_code_interpreter/README.md)** - 基本的なエージェント開発はここから
    - 安全なPython実行環境でAWSコスト見積もりツールを構築
    - 即座に実践的な結果を得ながらAgentCoreの基本を学習
    - **所要時間**: ~30分 | **難易度**: 初級
 
-2. **[Runtime](02_runtime/README_ja.md)** - エージェントをAWSクラウドインフラストラクチャにデプロイ
+2. **[Runtime](02_runtime/README.md)** - エージェントをAWSクラウドインフラストラクチャにデプロイ
    - コスト見積もりツールをAgentCore Runtimeにパッケージ化してデプロイ
    - スケーラブルなエージェントデプロイパターンを理解
    - **所要時間**: ~45分 | **難易度**: 中級
 
-3. **[Gateway](03_gateway/README_ja.md)** - セキュアなAPIを通じてエージェントを公開
+3. **[Gateway](03_gateway/README.md)** - セキュアなAPIを通じてエージェントを公開
    - Lambda統合でMCP互換APIエンドポイントを作成
    - Cognito OAuth認証を実装
    - **所要時間**: ~60分 | **難易度**: 中級
 
-4. **[Identity](04_identity/README_ja.md)** - エージェントに透過的な認証を追加
+4. **[Identity](04_identity/README.md)** - エージェントに透過的な認証を追加
    - `@requires_access_token`デコレーターでOAuth 2.0を統合
    - 自動トークン管理でエージェント操作を保護
    - **所要時間**: ~30分 | **難易度**: 中級
 
-5. **[Observability](05_observability/README_ja.md)** - 本番エージェントのモニタリングとデバッグ
+5. **[Observability](05_observability/README.md)** - 本番エージェントのモニタリングとデバッグ
    - 包括的なモニタリングのためのCloudWatch統合を有効化
    - トレーシング、メトリクス、デバッグ機能をセットアップ
    - **所要時間**: ~20分 | **難易度**: 初級
 
-6. **[Memory](06_memory/README_ja.md)** - コンテキスト認識型の学習エージェントを構築
+6. **[Memory](06_memory/README.md)** - コンテキスト認識型の学習エージェントを構築
    - 短期および長期メモリ機能を実装
    - パーソナライズされた適応型エージェント体験を作成
    - **所要時間**: ~45分 | **難易度**: 上級
@@ -103,16 +103,16 @@ sample-amazon-bedrock-agentcore-onboarding/
 ### 🎯 フォーカス学習（ユースケース別）
 
 **初めてのエージェント構築**
-→ [01_code_interpreter](01_code_interpreter/README_ja.md)から開始
+→ [01_code_interpreter](01_code_interpreter/README.md)から開始
 
 **本番環境へのデプロイ**
-→ [02_runtime](02_runtime/README_ja.md) → [03_gateway](03_gateway/README_ja.md) → [05_observability](05_observability/README_ja.md)の順序で
+→ [02_runtime](02_runtime/README.md) → [03_gateway](03_gateway/README.md) → [05_observability](05_observability/README.md)の順序で
 
 **エンタープライズセキュリティ**
-→ [04_identity](04_identity/README_ja.md) → [03_gateway](03_gateway/README_ja.md)に焦点を当てる
+→ [04_identity](04_identity/README.md) → [03_gateway](03_gateway/README.md)に焦点を当てる
 
 **高度なAI機能**
-→ [06_memory](06_memory/README_ja.md) → [01_code_interpreter](01_code_interpreter/README_ja.md)を探求
+→ [06_memory](06_memory/README.md) → [01_code_interpreter](01_code_interpreter/README.md)を探求
 
 ## 前提条件
 
