@@ -64,10 +64,12 @@ uv run prepare_agent.py --source-dir ../01_code_interpreter/cost_estimator_agent
 # エージェントランタイムを設定 (アカウント id は実行環境に依存します。 `prepare_agent.py` の実行結果を確認してください)
 uv run agentcore configure --entrypoint ./deployment/invoke.py --name cost_estimator_agent --execution-role arn:aws:iam::123456789012:role/AgentCoreRole-cost_estimator_agent --requirements-file ./deployment/requirements.txt --disable-otel --region us-east-1
 
-# (amd64 の場合）
- docker run --privileged --rm tonistiigi/binfmt --install all 
+
 # エージェントを起動
 uv run agentcore launch
+
+# (エージェント起動時に exec /bin/sh: exec format error が出る場合、amd64 のマシンを使っている可能性が高い。その場合下記を実行する）
+ docker run --privileged --rm tonistiigi/binfmt --install all 
 
 # エージェントをテスト
 uv run agentcore invoke '{"prompt": "SSH用の小さなEC2を準備したいです。コストはいくらですか？"}'
