@@ -68,7 +68,7 @@ uv run agentcore configure --entrypoint ./deployment/invoke.py --name cost_estim
 # エージェントを起動
 uv run agentcore launch
 
-# (エージェント起動時に exec /bin/sh: exec format error が出る場合、amd64 のマシンを使っている可能性が高い。その場合下記を実行する）
+# (エージェント起動時に exec /bin/sh: exec format error が出る場合、arm64 の以外アーキテクチャを使っている可能性が高い。その場合下記を実行する）
  docker run --privileged --rm tonistiigi/binfmt --install all 
 
 # エージェントをテスト
