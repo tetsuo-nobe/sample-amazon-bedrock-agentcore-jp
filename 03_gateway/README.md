@@ -51,10 +51,10 @@ sequenceDiagram
 
 ```bash
 cd 03_gateway
-./deploy.sh
+./deploy.sh  <email address for SES>
 ```
 
-これにより、SAMを使用してLambda関数がデプロイされ、設定が`gateway_config.json`に保存されます。
+これにより、SAMを使用してLambda関数がデプロイされ、設定が`outbound_gateway.json`に保存されます。
 
 ### ステップ2: Cognito付きGatewayを作成
 
